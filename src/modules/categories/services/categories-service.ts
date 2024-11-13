@@ -3,15 +3,29 @@ import { inject, injectable } from "tsyringe";
 import { CategoriesRepository } from "../repositories/categories.repository";
 import { CreateCategoryDto } from "../../../modules/dtos/create-category.dto";
 import { UpdateCategoryDto } from "../../../modules/dtos/update-category.dto";
+import { RabbitmqNames } from "../../../shared/enums/rabbitmq-name.enum";
+import { ClientRabbitMq } from "../../../infra/rabbitmq/rabbitmq.config";
+import { QueuesNames } from "../../../shared/enums/queues-name.enum";
 
 @injectable()
 export class CategoriesService {
   constructor(
     @inject(RepositoriesName.CATEGORIES)
-    private categoriesRepository: CategoriesRepository
+    private categoriesRepository: CategoriesRepository,
+
+    @inject(RabbitmqNames.CATEGORIES)
+    private rabbitmqClient: ClientRabbitMq
   ) {}
 
-  async addCategory(payload: CreateCategoryDto) {
+  async saveCategory({
+    payload,
+    isUpdate,
+    idCategory,
+  }: {
+    payload: CreateCategoryDto | UpdateCategoryDto;
+    isUpdate: boolean;
+    idCategory?: number;
+  }) {
     if (payload.parent_id) {
       const [parentCategory] = await this.categoriesRepository.getBy({
         id: payload.parent_id,
@@ -34,9 +48,16 @@ export class CategoriesService {
         });
 
       if (categoriesTheSameLevelAndName.length) {
-        throw new Error(
-          "Já existe uma categoria no mesmo nível com mesmo nome, verifique"
-        );
+        if (
+          !isUpdate &&
+          !categoriesTheSameLevelAndName.find(
+            (x) => x.id === idCategory && x.is_active === payload.is_active
+          )
+        ) {
+          throw new Error(
+            "Já existe uma categoria no mesmo nível com mesmo nome, verifique"
+          );
+        }
       }
 
       const categoriesInTheSameLevel =
@@ -60,16 +81,34 @@ export class CategoriesService {
         );
       }
     }
-
-    return this.categoriesRepository.createCategory(payload);
-  }
-
-  async updateCategory(idCategory: number, payload: UpdateCategoryDto) {
-    return this.categoriesRepository.updateCategory(idCategory, payload);
+    if (isUpdate) {
+      this.rabbitmqClient.publishToQueue(
+        QueuesNames.UPDATE_CATEGORY,
+        JSON.stringify({
+          idCategory: idCategory,
+          payload: payload,
+        })
+      );
+    } else {
+      this.rabbitmqClient.publishToQueue(
+        QueuesNames.ADD_CATEGORY,
+        JSON.stringify(payload)
+      );
+    }
   }
 
   async deleteCategoriesAndChildrens(id: number) {
-    return this.categoriesRepository.deleteCategoriesAndChildrens(id);
+    const [oldCategory] = await this.categoriesRepository.findById(id);
+
+    if (!oldCategory) {
+      throw new Error("Categoria não encontrada, verifique");
+    }
+    this.rabbitmqClient.publishToQueue(
+      QueuesNames.DELETE_CATEGORY,
+      JSON.stringify({
+        idCategory: id,
+      })
+    );
   }
 
   async getCategoriesWithHierarchy(): Promise<any> {

@@ -9,6 +9,9 @@ import bodyParser from "body-parser";
 import makeSetupSwagger from "./swagger-setup";
 import { router as routes } from "./routes/index";
 import ErrorHandler from "./middlewares/error-handler";
+import { RabbitmqConsumer } from "./infra/rabbitmq/consumers";
+import { container } from "tsyringe";
+import { ClientRabbitMq } from "./infra/rabbitmq/rabbitmq.config";
 const cors = require("cors");
 
 const app = express();
@@ -20,10 +23,24 @@ app.use(ErrorHandler);
 makeSetupSwagger(app);
 
 AppDataSource.initialize()
-  .then(() => {
-    console.log("Conexão com o banco de dados estabelecida com sucesso!");
+  .then(async () => {
+    const rabbitmqConsumer = new RabbitmqConsumer(
+      container.resolve(ClientRabbitMq)
+    );
+    rabbitmqConsumer.consumeAddCategoryQueue();
+    rabbitmqConsumer.consumeUpdateCategoryQueue();
+    rabbitmqConsumer.consumeDeleteCategoryQueue();
   })
   .catch((error: Error) =>
     console.error("Erro ao conectar ao banco de dados:", error)
   );
+
 app.listen(3334, () => console.log("server running"));
+process.on("uncaughtException", (err) => {
+  console.error("Exceção não capturada:", err);
+  process.exit(1);
+});
+
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("Rejeição não tratada:", promise, "Razão:", reason);
+});
