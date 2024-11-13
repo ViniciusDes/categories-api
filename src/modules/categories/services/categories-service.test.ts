@@ -3,6 +3,7 @@ import { CreateCategoryDto } from "../../../modules/dtos/create-category.dto";
 import { CategoriesService } from "./categories-service";
 import { UpdateCategoryDto } from "../../../modules/dtos/update-category.dto";
 import { QueuesNames } from "../../../shared/enums/queues-name.enum";
+import { ClientRabbitMq } from "@/infra/rabbitmq/rabbitmq.config";
 
 const mockCategoriesRepository = {
   getBy: jest.fn(),
@@ -36,7 +37,10 @@ class ClientRabbitMqMock {
 const mockRabbitMq = new ClientRabbitMqMock();
 
 const makeService = () => {
-  return new CategoriesService(mockCategoriesRepository as any, mockRabbitMq);
+  return new CategoriesService(
+    mockCategoriesRepository as any,
+    mockRabbitMq as unknown as ClientRabbitMq
+  );
 };
 
 beforeEach(() => {

@@ -34,4 +34,13 @@ AppDataSource.initialize()
   .catch((error: Error) =>
     console.error("Erro ao conectar ao banco de dados:", error)
   );
+
 app.listen(3334, () => console.log("server running"));
+process.on("uncaughtException", (err) => {
+  console.error("Exceção não capturada:", err);
+  process.exit(1);
+});
+
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("Rejeição não tratada:", promise, "Razão:", reason);
+});

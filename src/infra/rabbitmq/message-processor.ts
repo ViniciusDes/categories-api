@@ -12,22 +12,21 @@ export class MessagesProcessor {
   async processAddCategory(message: string) {
     const payload = JSON.parse(message);
 
-    await this.categoriesRepository.createCategory(payload);
+    this.categoriesRepository.createCategory(payload);
   }
   async processUpdateCategory(message: string) {
-    const msgObj = JSON.parse(message);
+    let msgObj = JSON.parse(message);
 
     if (!msgObj?.idCategory || !msgObj?.payload) {
       throw new Error("Invalid message to update category");
     }
 
-    await this.categoriesRepository.updateCategory(
-      msgObj.idCategory,
-      msgObj.payload
-    );
+    this.categoriesRepository.updateCategory(msgObj.idCategory, msgObj.payload);
   }
 
   async processDeleteCategory(message: string) {
+    console.log("message", message);
+
     const msgObj = JSON.parse(message);
 
     if (!msgObj?.idCategory) {

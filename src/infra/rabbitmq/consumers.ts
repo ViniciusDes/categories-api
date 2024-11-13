@@ -1,7 +1,7 @@
 import { ConsumeMessage } from "amqplib";
 import { QueuesNames } from "../../shared/enums/queues-name.enum";
 import { RabbitmqNames } from "../../shared/enums/rabbitmq-name.enum";
-import { MessagesProcessor } from "./messge-processor";
+import { MessagesProcessor } from "./message-processor";
 import { ClientRabbitMq } from "./rabbitmq.config";
 import { container, inject, injectable } from "tsyringe";
 
@@ -23,24 +23,28 @@ export class RabbitmqConsumer {
     );
   }
 
-  consumeUpdateCategoryQueue() {
+  async consumeUpdateCategoryQueue() {
     const messagesProcessor = container.resolve(MessagesProcessor);
-
     this.rabbitmqClient.consumeFromQueue(
       QueuesNames.UPDATE_CATEGORY,
       (msg: ConsumeMessage) => {
-        messagesProcessor.processUpdateCategory(msg.content.toString());
+        try {
+          messagesProcessor.processUpdateCategory(msg.content.toString());
+        } catch (error) {}
       }
     );
   }
 
-  consumeDeleteCategoryQueue() {
+  async consumeDeleteCategoryQueue() {
     const messagesProcessor = container.resolve(MessagesProcessor);
-
     this.rabbitmqClient.consumeFromQueue(
       QueuesNames.DELETE_CATEGORY,
       (msg: ConsumeMessage) => {
-        messagesProcessor.processDeleteCategory(msg.content.toString());
+        try {
+          messagesProcessor.processDeleteCategory(msg.content.toString());
+        } catch (error) {
+          console.error("Erro ao processar mensagem:", error);
+        }
       }
     );
   }

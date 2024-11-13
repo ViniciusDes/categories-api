@@ -6,13 +6,8 @@ export class ClientRabbitMq {
   connection: amqp.Connection | null;
   channel: amqp.Channel | null;
 
-  constructor() {
-    this.connect();
-  }
-
   async connect() {
     this.connection = await amqp.connect(RABBITMQ_URL);
-    this.channel = await this.connection.createChannel();
   }
 
   async createQueue(queueName: string) {
@@ -29,11 +24,13 @@ export class ClientRabbitMq {
   async publishToQueue(queueName: string, message: any) {
     if (!this.channel) {
       await this.connect();
+      await this.createChannel();
     }
 
     if (!this.channel) {
       return;
     }
+    await this.channel?.assertQueue(queueName, { durable: true });
     this.channel.sendToQueue(queueName, Buffer.from(message), {
       persistent: true,
     });
@@ -42,22 +39,29 @@ export class ClientRabbitMq {
   async consumeFromQueue(queueName: string, callback: Function) {
     if (!this.channel) {
       await this.connect();
+      await this.createChannel();
     }
 
     if (!this.channel) {
       return;
     }
-    await this.channel.consume(queueName, (msg) => {
-      if (msg !== null && this.channel) {
-        try {
-          callback(msg);
-          this.channel.ack(msg);
-        } catch (error) {
-          this.channel?.nack(msg, false, true);
-          this.connect();
+    await this.channel.assertQueue("update-category-queue");
+    this.channel.consume(
+      queueName,
+      (msg) => {
+        if (msg !== null && this.channel) {
+          try {
+            callback(msg);
+            this.channel.ack(msg);
+          } catch (error) {
+            this.channel.nack(msg, false, true);
+          }
         }
+      },
+      {
+        noAck: false,
       }
-    });
+    );
   }
 
   async close() {
@@ -66,6 +70,31 @@ export class ClientRabbitMq {
     }
     await this.channel.close();
     await this.connection.close();
+  }
+
+  async createChannel() {
+    if (!this.connection) {
+      throw new Error("RabbitMQ connection is not established");
+    }
+    await this.connect();
+
+    this.channel = await this.connection.createChannel();
+    this.channel.assertQueue("update-category-queue", {
+      durable: true,
+    });
+    this.setupChannelEvents();
+  }
+
+  private setupChannelEvents() {
+    if (!this.channel) return;
+
+    this.channel.on("close", async () => {
+      await this.createChannel();
+    });
+
+    this.channel.on("error", async (error) => {
+      await this.createChannel();
+    });
   }
 }
 
