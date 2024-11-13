@@ -1,29 +1,49 @@
 import "reflect-metadata";
 import { CreateCategoryDto } from "../../../modules/dtos/create-category.dto";
 import { CategoriesService } from "./categories-service";
-import { UpdateCategoryDto } from "@/modules/dtos/update-category.dto";
+import { UpdateCategoryDto } from "../../../modules/dtos/update-category.dto";
+import { QueuesNames } from "../../../shared/enums/queues-name.enum";
 
 const mockCategoriesRepository = {
   getBy: jest.fn(),
+  getAll: jest.fn(),
   findByNameAndParentId: jest.fn(),
   findByPosition: jest.fn(),
   findByNameAndPosition: jest.fn(),
-  createCategory: jest.fn(),
+  saveCategory: jest.fn(),
   updateCategory: jest.fn(),
   deleteCategoriesAndChildrens: jest.fn(),
   findByParentId: jest.fn(),
   findAll: jest.fn(),
 };
 
+const mockConnect = jest.fn();
+const mockCreateQueue = jest.fn();
+const mockPublishToQueue = jest.fn();
+const mockConsumeFromQueue = jest.fn();
+const mockClose = jest.fn();
+
+class ClientRabbitMqMock {
+  connection = null;
+  channel = null;
+  connect = mockConnect;
+  createQueue = mockCreateQueue;
+  publishToQueue = mockPublishToQueue;
+  consumeFromQueue = mockConsumeFromQueue;
+  close = mockClose;
+}
+
+const mockRabbitMq = new ClientRabbitMqMock();
+
 const makeService = () => {
-  return new CategoriesService(mockCategoriesRepository as any);
+  return new CategoriesService(mockCategoriesRepository as any, mockRabbitMq);
 };
 
 beforeEach(() => {
   jest.clearAllMocks();
 });
 
-describe("CategoriesService - addCategory", () => {
+describe("CategoriesService - saveCategory", () => {
   it("Must create category successfully", async () => {
     const service = makeService();
 
@@ -34,10 +54,14 @@ describe("CategoriesService - addCategory", () => {
 
     mockCategoriesRepository.findByNameAndPosition.mockResolvedValue([]);
 
-    await service.addCategory(payload);
+    await service.saveCategory({
+      isUpdate: false,
+      payload: payload,
+    });
 
-    expect(mockCategoriesRepository.createCategory).toHaveBeenCalledWith(
-      payload
+    expect(mockPublishToQueue).toHaveBeenCalledWith(
+      QueuesNames.ADD_CATEGORY,
+      JSON.stringify(payload)
     );
   });
 
@@ -52,9 +76,12 @@ describe("CategoriesService - addCategory", () => {
 
     mockCategoriesRepository.getBy.mockResolvedValue([]);
 
-    await expect(service.addCategory(payload)).rejects.toThrow(
-      "Categoria nivel superior não encontrada, verifique"
-    );
+    await expect(
+      service.saveCategory({
+        isUpdate: false,
+        payload: payload,
+      })
+    ).rejects.toThrow("Categoria nivel superior não encontrada, verifique");
   });
 
   it("Must throw a new error if to surpass fifth level", async () => {
@@ -67,9 +94,12 @@ describe("CategoriesService - addCategory", () => {
 
     mockCategoriesRepository.getBy.mockResolvedValue([{ id: 1, level: 5 }]);
 
-    await expect(service.addCategory(payload)).rejects.toThrow(
-      "Categoria só pode ter até o quinto nivel"
-    );
+    await expect(
+      service.saveCategory({
+        isUpdate: false,
+        payload: payload,
+      })
+    ).rejects.toThrow("Categoria só pode ter até o quinto nivel");
   });
 
   it("Should throw error when trying to create category with same name at same level", async () => {
@@ -85,7 +115,12 @@ describe("CategoriesService - addCategory", () => {
       { id: 2 },
     ]);
 
-    await expect(service.addCategory(payload)).rejects.toThrow(
+    await expect(
+      service.saveCategory({
+        isUpdate: false,
+        payload: payload,
+      })
+    ).rejects.toThrow(
       "Já existe uma categoria no mesmo nível com mesmo nome, verifique"
     );
   });
@@ -104,33 +139,36 @@ describe("CategoriesService - addCategory", () => {
       Array(20).fill({})
     );
 
-    await expect(service.addCategory(payload)).rejects.toThrow(
-      "Categoria não pode ter mais de 20 itens, verifique"
-    );
+    await expect(
+      service.saveCategory({
+        isUpdate: false,
+        payload: payload,
+      })
+    ).rejects.toThrow("Categoria não pode ter mais de 20 itens, verifique");
   });
 });
 
 describe("CategoriesService - getCategoriesWithHierarchy", () => {
-  it("Must return categories with hierarchy format", async () => {
+  it("Must return categories in a hierarchical format", async () => {
     const service = makeService();
 
-    mockCategoriesRepository.findByParentId
-      .mockResolvedValueOnce([{ id: 1, name: "Categoria Pai", parentId: null }])
-      .mockResolvedValueOnce([{ id: 2, name: "SubCategoria", parentId: 1 }])
-      .mockResolvedValueOnce([]);
+    mockCategoriesRepository.getAll.mockResolvedValue([
+      { id: 1, name: "Categoria pai", parent_id: null },
+      { id: 2, name: "Categoria filha", parent_id: 1 },
+    ]);
 
     const result = await service.getCategoriesWithHierarchy();
 
     expect(result).toEqual([
       {
         id: 1,
-        name: "Categoria Pai",
-        parentId: null,
+        name: "Categoria pai",
+        parent_id: null,
         children: [
           {
             id: 2,
-            name: "SubCategoria",
-            parentId: 1,
+            name: "Categoria filha",
+            parent_id: 1,
             children: [],
           },
         ],
@@ -140,37 +178,35 @@ describe("CategoriesService - getCategoriesWithHierarchy", () => {
 });
 
 describe("CategoriesService - updateCategory", () => {
-  it("Must update an category", async () => {
+  it("Must publish a message to RabbitM, when update category", async () => {
     const service = makeService();
     const payload: UpdateCategoryDto = {
-      name: "Categoria Atualizada",
-    } as UpdateCategoryDto;
+      name: "Updated Category",
+      is_active: "0",
+    };
 
-    mockCategoriesRepository.updateCategory.mockResolvedValue(true);
+    await service.saveCategory({
+      isUpdate: true,
+      payload,
+      idCategory: 1,
+    });
 
-    const result = await service.updateCategory(1, payload);
-
-    expect(mockCategoriesRepository.updateCategory).toHaveBeenCalledWith(
-      1,
-      payload
+    expect(mockPublishToQueue).toHaveBeenCalledWith(
+      QueuesNames.UPDATE_CATEGORY,
+      JSON.stringify({ idCategory: 1, payload })
     );
-    expect(result).toBe(true);
   });
 });
 
 describe("CategoriesService - deleteCategoriesAndChildrens", () => {
-  it("Must delete the category and yours sub-categories", async () => {
+  it("Must successfully publish message to RabbitMQ, when delete category", async () => {
     const service = makeService();
 
-    mockCategoriesRepository.deleteCategoriesAndChildrens.mockResolvedValue(
-      true
+    await service.deleteCategoriesAndChildrens(1);
+
+    expect(mockPublishToQueue).toHaveBeenCalledWith(
+      QueuesNames.DELETE_CATEGORY,
+      JSON.stringify({ idCategory: 1 })
     );
-
-    const result = await service.deleteCategoriesAndChildrens(1);
-
-    expect(
-      mockCategoriesRepository.deleteCategoriesAndChildrens
-    ).toHaveBeenCalledWith(1);
-    expect(result).toBe(true);
   });
 });

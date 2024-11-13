@@ -1,4 +1,7 @@
-import { CreateCategoryDto } from "../../../modules/dtos/create-category.dto";
+import {
+  CreateCategoryDto,
+  IsActive,
+} from "../../../modules/dtos/create-category.dto";
 import { CategoriesEntity } from "../../../infra/database/entities";
 import { ClientDatabase } from "../../../shared/database/repository";
 import "reflect-metadata";
@@ -49,7 +52,11 @@ export class CategoriesRepository extends ClientDatabase<CategoriesEntity> {
     await this.save({ ...oldCategory, ...payload });
   }
 
-  findByNameAndParentId(filterData: { name: string; parentId: number }) {
+  findByNameAndParentId(filterData: {
+    name: string;
+    parentId: number;
+    isActive?: IsActive;
+  }) {
     return this.getBy({
       name: filterData.name,
       parent_id: filterData.parentId,

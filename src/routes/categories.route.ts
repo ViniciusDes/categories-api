@@ -66,7 +66,10 @@ categoryRouter.post(
     const createCategory = container.resolve(CategoriesService);
 
     try {
-      await createCategory.addCategory(req.body);
+      await createCategory.saveCategory({
+        isUpdate: false,
+        payload: req.body,
+      });
 
       res.status(201).json({
         message: "Categoria criada com sucesso",
@@ -108,7 +111,11 @@ categoryRouter.patch(
     const createCategory = container.resolve(CategoriesService);
 
     try {
-      await createCategory.updateCategory(+req.params.id, req.body);
+      await createCategory.saveCategory({
+        isUpdate: true,
+        payload: req.body,
+        idCategory: +req.params.id,
+      });
 
       res.status(201).json({
         message: "Categoria salva com sucesso",

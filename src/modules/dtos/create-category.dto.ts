@@ -1,4 +1,4 @@
-type IsActive = "0" | "1";
+export type IsActive = "0" | "1";
 
 export interface CreateCategoryDto {
   name: string;
