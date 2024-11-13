@@ -6,8 +6,8 @@ dotenv.config();
 export function getConfig() {
   return {
     type: "postgres",
-    host: process.env.HOST_DB_INSIDE_CONTAINER,
-    port: process.env.PORT_DB_INSIDE_CONTAINER,
+    host: process.env.HOST_DB_LOCAL,
+    port: process.env.PORT_DB_LOCAL,
     poolSize: 3,
     username: process.env.USER_DB_LOCAL,
     password: process.env.PASSWORD_DB,
