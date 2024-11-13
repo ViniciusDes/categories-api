@@ -18,11 +18,7 @@ export class RabbitmqConsumer {
     this.rabbitmqClient.consumeFromQueue(
       QueuesNames.ADD_CATEGORY,
       (msg: ConsumeMessage) => {
-        try {
-          messagesProcessor.processAddCategory(msg.content.toString());
-        } catch (error) {
-          this.rabbitmqClient.channel?.nack(msg, false, true);
-        }
+        messagesProcessor.processAddCategory(msg.content.toString());
       }
     );
   }
@@ -33,11 +29,7 @@ export class RabbitmqConsumer {
     this.rabbitmqClient.consumeFromQueue(
       QueuesNames.UPDATE_CATEGORY,
       (msg: ConsumeMessage) => {
-        try {
-          messagesProcessor.processUpdateCategory(msg.content.toString());
-        } catch (error) {
-          this.rabbitmqClient.channel?.nack(msg, false, true);
-        }
+        messagesProcessor.processUpdateCategory(msg.content.toString());
       }
     );
   }
@@ -48,11 +40,7 @@ export class RabbitmqConsumer {
     this.rabbitmqClient.consumeFromQueue(
       QueuesNames.DELETE_CATEGORY,
       (msg: ConsumeMessage) => {
-        try {
-          messagesProcessor.processDeleteCategory(msg.content.toString());
-        } catch (error) {
-          this.rabbitmqClient.channel?.nack(msg, false, true);
-        }
+        messagesProcessor.processDeleteCategory(msg.content.toString());
       }
     );
   }
