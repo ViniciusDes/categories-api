@@ -98,6 +98,11 @@ export class CategoriesService {
   }
 
   async deleteCategoriesAndChildrens(id: number) {
+    const [oldCategory] = await this.categoriesRepository.findById(id);
+
+    if (!oldCategory) {
+      throw new Error("Categoria não encontrada, verifique");
+    }
     this.rabbitmqClient.publishToQueue(
       QueuesNames.DELETE_CATEGORY,
       JSON.stringify({

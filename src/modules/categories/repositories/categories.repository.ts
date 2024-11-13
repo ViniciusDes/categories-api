@@ -89,6 +89,12 @@ export class CategoriesRepository extends ClientDatabase<CategoriesEntity> {
     );
   }
 
+  findById(id: number) {
+    return this.getBy({
+      id,
+    });
+  }
+
   async deleteCategoriesAndChildrens(id: number) {
     const [oldCategory] = await this.getBy({
       id: id,
