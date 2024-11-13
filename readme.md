@@ -10,4 +10,5 @@
 - ##### Execute o comando: **docker-compose up** e terá a aplicação sendo executada na porta 3334
 - ##### Para executar os testes execute o comando: **yarn test**
 - ##### Para verificar e acessar a documentação da api, abra uma aba no navegador no endereço da aplicação: **http://localhost:3334/api-docs**
+- ##### Deploy feito no EC2 AWS: **http://ec2-3-140-246-5.us-east-2.compute.amazonaws.com:3334/api-docs**
 
