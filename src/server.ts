@@ -24,12 +24,12 @@ makeSetupSwagger(app);
 
 AppDataSource.initialize()
   .then(async () => {
-    const rabbitmqConsumer = new RabbitmqConsumer(
-      container.resolve(ClientRabbitMq)
-    );
-    rabbitmqConsumer.consumeAddCategoryQueue();
-    rabbitmqConsumer.consumeUpdateCategoryQueue();
-    rabbitmqConsumer.consumeDeleteCategoryQueue();
+    // const rabbitmqConsumer = new RabbitmqConsumer(
+    //   container.resolve(ClientRabbitMq)
+    // );
+    // rabbitmqConsumer.consumeAddCategoryQueue();
+    // rabbitmqConsumer.consumeUpdateCategoryQueue();
+    // rabbitmqConsumer.consumeDeleteCategoryQueue();
   })
   .catch((error: Error) =>
     console.error("Erro ao conectar ao banco de dados:", error)

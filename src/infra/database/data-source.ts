@@ -7,10 +7,8 @@ export function getConfig() {
   return {
     type: "postgres",
     host: process.env.HOST_DB_BY_CONTAINER,
-    ssl: {
-      rejectUnauthorized: false,
-    },
-    port: 5432,
+    ssl: false,
+    port: process.env.PORT_DB_BY_CONTAINER,
     poolSize: 3,
     username: process.env.USER_DB,
     password: process.env.PASSWORD_DB,
